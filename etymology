@@ -7,6 +7,8 @@ import random
 import requests
 from textwrap import wrap, fill
 from blessings import Terminal
+
+
 def beautify(soup):
     # BeautifulSoup strips out whitespace around in-line markup tags, see 
     # http://stackoverflow.com/a/16767636 for explanation of solution used below.
@@ -17,7 +19,7 @@ def beautify(soup):
     beautifiedText = re.sub('\s+([,)\].;:])', '\g<1>', beautifiedText)
     return beautifiedText
 
-def getColumnCount():
+def getTerminalColumnCount():
     rows, columns = os.popen('stty size').read().split()
     return int(columns)
 
@@ -60,7 +62,7 @@ def main():
     definition = beautify(soup.dd)
     t = Terminal()
     print t.bold(hit)
-    print fill(definition, width=getColumnCount())
+    print fill(definition, width=getTerminalColumnCount())
 
 if __name__ == '__main__':
     main()
