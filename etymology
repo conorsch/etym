@@ -48,5 +48,3 @@ definition = beautify(soup.dd)
 t = Terminal()
 print t.bold(hit)
 print fill(definition, width=getColumnCount())
-
-
