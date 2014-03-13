@@ -34,7 +34,7 @@ def getRandomLemma():
     # from nltk.corpus import words
     # candidate = random.choice(words.words())
 
-    candidate = random.choice(open('/usr/share/dict/words').readlines()).rstrip('\n')
+    candidate = random.choice(open("/usr/share/dict/words").readlines()).rstrip('\n')
     candidate = lemmatizer.lemmatize(candidate)
 
     # Let's refuse any candidates that aren't strictly alphanumeric, 
@@ -45,24 +45,57 @@ def getRandomLemma():
     else:
         return getRandomLemma()
 
+
+class NoResultsFound(Exception):
+    def __init__(self, value):
+        self.value = value
+
+    def __str__(self):
+        return repr(self.value)
+
+def queryEtymOnline(query):
+
+    print "Querying etymonline.com for '%s'..." % query
+    r = requests.get("http://www.etymonline.com/index.php?search=" + query)
+    soup = BeautifulSoup(r.content, convertEntities=BeautifulSoup.HTML_ENTITIES)
+
+    try:
+        hit = soup.dt.a.text
+    except:
+        raise NoResultsFound("Found no hits for query '%s'." % query)
+
+    etymology = beautify(soup.dd)
+    return (hit, etymology)
+
 def main():
     if len(sys.argv) < 2:
+        randomQuery = True
         query = getRandomLemma()
         #sys.exit("Provide a word to look up.")
     else:
         query = sys.argv.pop()
 
-    r = requests.get("http://www.etymonline.com/index.php?search=" + query)
-    soup = BeautifulSoup(r.content, convertEntities=BeautifulSoup.HTML_ENTITIES)
-    try:
-        hit = soup.dt.a.text
-    except:
-        sys.exit("Found no hits for query '%s'." % query)
+    (hit, etymology) = (None, None)
 
-    definition = beautify(soup.dd)
+    for attempts in range(5):
+        try:
+            (hit, etymology) = queryEtymOnline(query)
+        except NoResultsFound:
+            if randomQuery == True:
+                query = getRandomLemma()
+                continue
+            else:
+                raise
+        except requests.exceptions.ConnectionError:
+            sys.exit("Could not query etymonline.com; check internet connection.")
+        break
+
+    if (hit, etymology) == (None, None):
+        sys.exit("After 5 attempts, could not find a result for '%s'" % query)
+
     t = Terminal()
     print t.bold(hit)
-    print fill(definition, width=getTerminalColumnCount())
+    print fill(etymology, width=getTerminalColumnCount())
 
 if __name__ == '__main__':
     main()
