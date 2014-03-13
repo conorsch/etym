@@ -1,0 +1,52 @@
+#!/usr/bin/python
+from BeautifulSoup import BeautifulSoup
+import os
+import sys
+import re
+import random
+import requests
+from textwrap import wrap, fill
+from blessings import Terminal
+def beautify(soup):
+    # BeautifulSoup strips out whitespace around in-line markup tags, see 
+    # http://stackoverflow.com/a/16767636 for explanation of solution used below.
+    beautifiedText = ' '.join(unicode(i.string) for i in soup)
+
+    # Clean up 
+    beautifiedText = re.sub('\s{2,}', ' ', beautifiedText)
+    beautifiedText = re.sub('\s+([,)\].;:])', '\g<1>', beautifiedText)
+    return beautifiedText
+
+def getColumnCount():
+    rows, columns = os.popen('stty size').read().split()
+    return int(columns)
+
+def getRandomLemma(): 
+    from nltk.corpus import words
+    candidate = random.choice(words.words())
+    if re.match(r'^\w+$', candidate):
+        return candidate
+    else:
+        return getRandomLemma()
+
+if len(sys.argv) < 2:
+    query = getRandomLemma()
+    #sys.exit("Provide a word to look up.")
+else:
+    query = sys.argv.pop()
+
+assert isinstance(query, str)
+
+r = requests.get("http://www.etymonline.com/index.php?search=" + query)
+soup = BeautifulSoup(r.content, convertEntities=BeautifulSoup.HTML_ENTITIES)
+try: 
+    hit = soup.dt.a.text
+except:
+    sys.exit("Found no hits for query '%s'." % query)
+
+definition = beautify(soup.dd)
+t = Terminal()
+print t.bold(hit)
+print fill(definition, width=getColumnCount())
+
+
