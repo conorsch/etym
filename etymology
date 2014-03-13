@@ -55,7 +55,7 @@ class NoResultsFound(Exception):
 
 def queryEtymOnline(query):
 
-    print "Querying etymonline.com for '%s'..." % query
+    #print "Querying etymonline.com for '%s'..." % query
     r = requests.get("http://www.etymonline.com/index.php?search=" + query)
     soup = BeautifulSoup(r.content, convertEntities=BeautifulSoup.HTML_ENTITIES)
 
