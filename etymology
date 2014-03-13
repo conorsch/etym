@@ -43,22 +43,24 @@ def getRandomLemma():
     else:
         return getRandomLemma()
 
-if len(sys.argv) < 2:
-    query = getRandomLemma()
-    #sys.exit("Provide a word to look up.")
-else:
-    query = sys.argv.pop()
+def main():
+    if len(sys.argv) < 2:
+        query = getRandomLemma()
+        #sys.exit("Provide a word to look up.")
+    else:
+        query = sys.argv.pop()
 
-assert isinstance(query, str)
+    r = requests.get("http://www.etymonline.com/index.php?search=" + query)
+    soup = BeautifulSoup(r.content, convertEntities=BeautifulSoup.HTML_ENTITIES)
+    try:
+        hit = soup.dt.a.text
+    except:
+        sys.exit("Found no hits for query '%s'." % query)
 
-r = requests.get("http://www.etymonline.com/index.php?search=" + query)
-soup = BeautifulSoup(r.content, convertEntities=BeautifulSoup.HTML_ENTITIES)
-try: 
-    hit = soup.dt.a.text
-except:
-    sys.exit("Found no hits for query '%s'." % query)
+    definition = beautify(soup.dd)
+    t = Terminal()
+    print t.bold(hit)
+    print fill(definition, width=getColumnCount())
 
-definition = beautify(soup.dd)
-t = Terminal()
-print t.bold(hit)
-print fill(definition, width=getColumnCount())
+if __name__ == '__main__':
+    main()
