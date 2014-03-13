@@ -22,8 +22,22 @@ def getColumnCount():
     return int(columns)
 
 def getRandomLemma(): 
-    from nltk.corpus import words
-    candidate = random.choice(words.words())
+    from nltk.stem.wordnet import WordNetLemmatizer
+    lemmatizer = WordNetLemmatizer()
+
+    # Ideally, we should use NLTK's list of all English words.
+    # In testing, however, etymonline.com returns zero results for many 
+    # entries in the 'words' corpus, so let's just read from the system dictionary.
+    #
+    # from nltk.corpus import words
+    # candidate = random.choice(words.words())
+
+    candidate = random.choice(open('/usr/share/dict/words').readlines()).rstrip('\n')
+    candidate = lemmatizer.lemmatize(candidate)
+
+    # Let's refuse any candidates that aren't strictly alphanumeric, 
+    # since lemmatizing will be difficult with those, and thus etymonline.com 
+    # will return zero hits. 
     if re.match(r'^\w+$', candidate):
         return candidate
     else:
