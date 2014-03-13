@@ -1,4 +1,4 @@
-etymology
+etym
 =========
 
 Simple Python script to query [EtymOnline] from the command line. 
