@@ -37,18 +37,20 @@ def getRandomLemma():
     candidate = random.choice(open("/usr/share/dict/words").readlines()).rstrip('\n')
     candidate = lemmatizer.lemmatize(candidate)
 
+    return candidate
+
     # Let's refuse any candidates that aren't strictly alphanumeric, 
     # since lemmatizing will be difficult with those, and thus etymonline.com 
     # will return zero hits. 
-    if re.match(r'^\w+$', candidate):
-        return candidate
-    else:
-        return getRandomLemma()
+#    if re.match(r'^\w+$', candidate):
+#        return candidate
+#    else:
+#        return getRandomLemma()
 
 
 class NoResultsFound(Exception):
     def __init__(self, value):
-        self.value = value
+        self.value = "Found no hits for query '%s'." % value
 
     def __str__(self):
         return repr(self.value)
@@ -62,7 +64,7 @@ def queryEtymOnline(query):
     try:
         hit = soup.dt.a.text
     except:
-        raise NoResultsFound("Found no hits for query '%s'." % query)
+        raise NoResultsFound(query)
 
     etymology = beautify(soup.dd)
     return (hit, etymology)
@@ -73,25 +75,20 @@ def main():
         query = getRandomLemma()
         #sys.exit("Provide a word to look up.")
     else:
-        query = sys.argv.pop()
-
-    (hit, etymology) = (None, None)
+        randomQuery = False
+        query = ' '.join(sys.argv[1:])
 
     for attempts in range(5):
         try:
             (hit, etymology) = queryEtymOnline(query)
         except NoResultsFound:
-            if randomQuery == True:
+            if randomQuery:
                 query = getRandomLemma()
                 continue
             else:
-                raise
+                sys.exit("No etymology found for '%s'." % query)
         except requests.exceptions.ConnectionError:
             sys.exit("Could not query etymonline.com; check internet connection.")
-        break
-
-    if (hit, etymology) == (None, None):
-        sys.exit("After 5 attempts, could not find a result for '%s'" % query)
 
     t = Terminal()
     print t.bold(hit)
