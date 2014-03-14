@@ -30,7 +30,6 @@ import requests
 from textwrap import fill
 
 from BeautifulSoup import BeautifulSoup
-from nltk.stem.wordnet import WordNetLemmatizer
 from blessings import Terminal
 from docopt import docopt
 
@@ -49,30 +48,9 @@ def getTerminalColumnCount():
     rows, columns = os.popen('stty size').read().split()
     return int(columns)
 
-def getRandomLemma(): 
-    lemmatizer = WordNetLemmatizer()
-
-    # Ideally, we should use NLTK's list of all English words.
-    # In testing, however, etymonline.com returns zero results for many 
-    # entries in the 'words' corpus, so let's just read from the system dictionary.
-    #
-    # from nltk.corpus import words
-    # candidate = random.choice(words.words())
-
+def getRandomWord(): 
     candidate = random.choice(open("/usr/share/dict/words").readlines()).rstrip('\n')
-    candidate = lemmatizer.lemmatize(candidate)
-
     return candidate
-
-    # Let's refuse any candidates that aren't strictly alphanumeric, 
-    # since lemmatizing will be difficult with those, and thus etymonline.com 
-    # will return zero hits. 
-    # TODO: Actually, this may not be necessary if using system dictionary....
-#    if re.match(r'^\w+$', candidate):
-#        return candidate
-#    else:
-#        return getRandomLemma()
-
 
 class NoResultsFound(Exception):
     def __init__(self, value):
@@ -110,7 +88,7 @@ def performLookup(query, verbose=None, random=None):
             if verbose:
                 print "FAIL"
             if random:
-                query = getRandomLemma()
+                query = getRandomWord()
                 continue
             else:
                 sys.exit("No etymology found for '%s'." % query)
@@ -138,7 +116,7 @@ def main(args):
             attempts = int(args['--number'])
 
             while attempts > 0:
-                query = getRandomLemma()
+                query = getRandomWord()
                 (hit, etymology) = performLookup(query, verbose=args['--verbose'], random=args['--random'])
                 displayResults(hit, etymology)
                 # Pad the entries with a line break, for better readability 
@@ -153,5 +131,4 @@ def main(args):
 
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='etym v0.1')
-    #print(arguments)
     main(arguments)
