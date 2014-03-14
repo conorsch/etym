@@ -1,4 +1,27 @@
 #!/usr/bin/env python
+"""etym
+
+Queries etymonline.com for word or phrase, and displays 
+its etymology if found. Also supports looking up a random word.
+
+Usage:
+    etym [options] <word> ...
+    etym [options] --random [--number=<num>]
+
+Examples:
+    etym viking
+    etym --random
+    etym -rn 7
+
+Arguments:
+    <word>      word (or phrase) to look up
+
+Options:
+    -h --help               Show this screen.
+    -v --verbose            Verbose mode.
+    -r --random             Look up random word.
+    -n --number=<num>       Number of random words to look up [default: 1].
+"""
 import os
 import sys
 import re
@@ -9,6 +32,7 @@ from textwrap import fill
 from BeautifulSoup import BeautifulSoup
 from nltk.stem.wordnet import WordNetLemmatizer
 from blessings import Terminal
+from docopt import docopt
 
 
 def beautify(soup):
@@ -57,9 +81,11 @@ class NoResultsFound(Exception):
     def __str__(self):
         return repr(self.value)
 
-def queryEtymOnline(query):
+def queryEtymOnline(query, verbose=None):
 
-    #print "Querying etymonline.com for '%s'..." % query
+    if verbose:
+        sys.stdout.write("Querying etymonline.com for '%s'... " % query)
+
     r = requests.get("http://www.etymonline.com/index.php?search=" + query)
     soup = BeautifulSoup(r.content, convertEntities=BeautifulSoup.HTML_ENTITIES)
 
@@ -68,33 +94,64 @@ def queryEtymOnline(query):
     except:
         raise NoResultsFound(query)
 
+    if verbose:
+        print "OK"
+
     etymology = beautify(soup.dd)
     return (hit, etymology)
 
-def main():
-    if len(sys.argv) < 2:
-        randomQuery = True
-        query = getRandomLemma()
-        #sys.exit("Provide a word to look up.")
-    else:
-        randomQuery = False
-        query = ' '.join(sys.argv[1:])
+def performLookup(query, verbose=None, random=None):
 
     for attempts in range(5):
         try:
-            (hit, etymology) = queryEtymOnline(query)
+            (hit, etymology) = queryEtymOnline(query, verbose=verbose)
+
         except NoResultsFound:
-            if randomQuery:
+            if verbose:
+                print "FAIL"
+            if random:
                 query = getRandomLemma()
                 continue
             else:
                 sys.exit("No etymology found for '%s'." % query)
+
         except requests.exceptions.ConnectionError:
             sys.exit("Could not query etymonline.com; check internet connection.")
 
+        break
+
+    return (hit, etymology)
+
+def displayResults(hit, etymology):
     t = Terminal()
     print t.bold(hit)
     print fill(etymology, width=getTerminalColumnCount())
 
+def main(args):
+
+    if args['<word>']:
+        query = ' '.join(args['<word>'])
+
+    if args['--random']:
+    
+        if args['--number']:
+            attempts = int(args['--number'])
+
+            while attempts > 0:
+                query = getRandomLemma()
+                (hit, etymology) = performLookup(query, verbose=args['--verbose'], random=args['--random'])
+                displayResults(hit, etymology)
+                # Pad the entries with a line break, for better readability 
+                # when displaying multiple results.
+                attempts -= 1
+                if attempts > 0:
+                    print ''
+
+    else:
+        (hit, etymology) = performLookup(query, verbose=args['--verbose'], random=args['--random'])
+        displayResults(hit, etymology)
+
 if __name__ == '__main__':
-    main()
+    arguments = docopt(__doc__, version='etym v0.1')
+    #print(arguments)
+    main(arguments)

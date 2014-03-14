@@ -2,3 +2,4 @@ requests
 BeautifulSoup
 nltk
 blessings
+docopt

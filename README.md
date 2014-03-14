@@ -40,6 +40,7 @@ Requirements
 * [BeautifulSoup]: Don't parse HTML without it.
 * [nltk]: Used to lemmatize words pulled out of `/usr/share/dict/words`. Overkill, but fun to have around. Also provides access to a much larger English word corpus than the system dictionary, but that's not used right now.
 * [blessings]: For text highlighting in terminal output.
+* [docopt]: Command-line args that make you smile.
 * An active internet connection.
 
 
@@ -53,3 +54,4 @@ MIT
 [BeautifulSoup]:http://www.crummy.com/software/BeautifulSoup/
 [nltk]:http://www.nltk.org/
 [blessings]:https://pypi.python.org/pypi/blessings/
+[docopt]:http://docopt.org/
