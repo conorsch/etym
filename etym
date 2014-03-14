@@ -49,7 +49,9 @@ def getTerminalColumnCount():
     return int(columns)
 
 def getRandomWord(): 
-    candidate = random.choice(open("/usr/share/dict/words").readlines()).rstrip('\n')
+    dictFile = "/usr/share/dict/words"
+    assert os.path.exists(dictFile), "Could not find dictionary file at %s." % dictFile
+    candidate = random.choice(open(dictFile).readlines()).rstrip('\n')
     return candidate
 
 class NoResultsFound(Exception):
