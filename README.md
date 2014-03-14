@@ -2,15 +2,13 @@ etym
 =========
 
 Simple Python script to query [EtymOnline] from the command line. 
-Provide a word, and it will provide an etymology, or die trying. 
-Use `--random` if you have trouble choosing (works great as motd).
-
+Use `--random` if you have trouble choosing. Query from your terminal, 
+or set as a motd.
 
 Usage
 -----
-
-```sh
-$ ./etym viking
+```
+$ etym viking
 Viking (n.)
 Scandinavian pirate, 1807, vikingr; modern spelling attested from 1840. The
 word is a historical revival; it was not used in Middle English, but it was
@@ -36,9 +34,9 @@ Consider placing a call to this script with the `--random` option in your
 # ~/.bash_logout (or ~/.bash_login, if you prefer)
 etym --random
 ```
-The script will block, but it's negible: 
-```sh
-time etym --random
+The script will block for a moment, but the roundtrip is negible: 
+```
+$ time etym --random
 cudgel (v.)
 "to beat with a cudgel," 1590s, from cudgel (n.). Related: Cudgeled; cudgeling.
 
@@ -48,16 +46,14 @@ sys     0m0.032s
 ```
 The above examples assume you've added the script to your `$PATH`. 
 
-
 Installation
 --------------
 
-```sh
+```
 git clone https://github.com/ronocdh/etym
 cd etym
 pip install -r requirements.txt
 ```
-
 
 Requirements
 ------------
@@ -68,7 +64,6 @@ Requirements
 * [docopt]: Command-line args that make you smile.
 * List of words at `/usr/share/dict/words`
 * An active internet connection.
-
 
 License
 ----
