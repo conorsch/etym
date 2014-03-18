@@ -38,8 +38,11 @@ def beautify(soup):
     # BeautifulSoup strips out whitespace around in-line markup tags, see 
     # http://stackoverflow.com/a/16767636 for explanation of solution used below.
     beautifiedText = str()
+    term = Terminal()
     for i in soup:
         if i.string:
+            if re.match(r'<span class="foreign">', str(i), re.UNICODE):
+                i.string = re.sub(r'<span class="foreign">(.+)</span>', r'{t.standout}\1{t.normal}'.format(t=term), str(i))
             beautifiedText += ' ' + i.string
 
     # Clean up 
