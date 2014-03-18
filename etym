@@ -47,10 +47,6 @@ def beautify(soup):
     beautifiedText = re.sub('\s+([,)\].;:])', '\g<1>', beautifiedText)
     return beautifiedText
 
-def getTerminalColumnCount():
-    rows, columns = os.popen('stty size').read().split()
-    return int(columns)
-
 def getRandomWord(): 
     dictFile = "/usr/share/dict/words"
     assert os.path.exists(dictFile), "Could not find dictionary file at %s." % dictFile
@@ -108,7 +104,7 @@ def performLookup(query, verbose=None, random=None):
 def displayResults(hit, etymology):
     t = Terminal()
     print t.bold(hit)
-    print fill(etymology, width=getTerminalColumnCount())
+    print fill(etymology, width=t.width)
 
 def main(args):
 
