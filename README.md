@@ -2,30 +2,37 @@ etym
 =========
 
 Simple Python script to query [EtymOnline] from the command line. 
+It formats the output nicely, using bold for keywords and italic for foreign words. 
 Use `--random` if you have trouble choosing. Query from your terminal, 
-or set as a motd.
+or set as a motd. 
 
 Usage
 -----
-```
-$ etym viking
-Viking (n.)
-Scandinavian pirate, 1807, vikingr; modern spelling attested from 1840. The
-word is a historical revival; it was not used in Middle English, but it was
-revived from Old Norse vikingr "freebooter, sea-rover, pirate, viking,"
-which usually is explained as meaning properly "one who came from the
-fjords," from vik "creek, inlet, small bay" (cf. Old English wic, Middle
-High German wich "bay," and second element in Reykjavik). But Old English
-wicing and Old Frisian wizing are almost 300 years older, and probably
-derive from wic "village, camp" (temporary camps were a feature of the
-Viking raids), related to Latin vicus "village, habitation" (see villa).
-None None The connection between the Norse and Old English words is still
-much debated. The period of Viking activity was roughly 8c. to 11c. In the
-Anglo-Saxon Chronicle, the raiding armies generally were referred to as þa
-Deniscan "the Danes," while those who settled in England were identified by
-their place of settlement. Old Norse viking (n.) meant "freebooting voyage,
-piracy;" one would "go on a viking."
-```
+
+<pre><code>$ etym viking
+<b>Viking (n.)</b>
+Scandinavian pirate, 1801, <i>vikingr</i>, in "The History of the Anglo-Saxons" 
+by English historian Sharon H. Turner (1768-1847); he suggested the second element 
+might be connected to <i>king</i>: The name by which the pirates were at first 
+distinguished was Vikingr, which perhaps originally meant kings of the bays. 
+It was in bays that they ambushed, to dart upon the passing voyager. But this 
+later was dismissed as incorrect. The form <i>viking</i> is attested in 1820, 
+in Jamieson's notes to "The Bruce." The word is a historians' revival; it was 
+not used in Middle English, but it was reintroduced from Old Norse <i>vikingr</i> 
+"freebooter, sea-rover, pirate, viking," which usually is explained as meaning 
+properly "one who came from the fjords," from <i>vik</i> "creek, inlet, small bay" 
+(cf. Old English <i>wic</i>, Middle High German <i>wich</i> "bay," and second 
+ element in <i>Reykjavik</i>). But Old English <i>wicing</i> and Old Frisian <i>wizing</i> 
+are almost 300 years older than the earliest attestation of the Old Norse word, 
+and probably derive from <i>wic</i> "village, camp" (large temporary camps were 
+a feature of the Viking raids), related to Latin <i>vicus</i> "village, habitation" (see villa). 
+The connection between the Norse and Old English words is still much debated. 
+The period of Viking activity was roughly 8c. to 11c. In the Anglo-Saxon Chronicle, 
+the raiding armies generally were referred to as <i>þa Deniscan</i> "the Danes," while
+those who settled in England were identified by their place of settlement. 
+Old Norse <i>viking</i> (n.) meant "freebooting voyage, piracy;" one would
+"go on a viking" ( <i>fara í viking</i>).
+</code></pre>
 
 Consider placing a call to this script with the `--random` option in your 
 `~/.bash_logout` file if you hop between machines frequently, e.g.:
@@ -35,15 +42,16 @@ Consider placing a call to this script with the `--random` option in your
 etym --random
 ```
 The script will block for a moment, but the roundtrip is negible: 
-```
-$ time etym --random
-cudgel (v.)
-"to beat with a cudgel," 1590s, from cudgel (n.). Related: Cudgeled; cudgeling.
+
+<pre><code>$ time etym --random
+<b>cudgel (v.)</b>
+"to beat with a cudgel," 1590s, from cudgel (n.). Related: <i>Cudgeled</i>; <i>cudgeling</i>.
 
 real    0m0.344s
 user    0m0.137s
 sys     0m0.032s
-```
+</code></pre>
+
 The above examples assume you've added the script to your `$PATH`. 
 
 Installation
@@ -60,7 +68,7 @@ Requirements
 
 * [requests]: Excellent HTTP library for humans.
 * [BeautifulSoup]: Don't parse HTML without it.
-* [blessings]: For text highlighting in terminal output.
+* [blessings]: For rich text formatting in terminal output.
 * [docopt]: Command-line args that make you smile.
 * List of words at `/usr/share/dict/words`
 * An active internet connection.

@@ -46,9 +46,10 @@ def beautify(soup):
             beautifiedText += ' ' + i.string
 
     # Clean up 
-    beautifiedText = re.sub('\s{2,}', ' ', beautifiedText)
     beautifiedText = re.sub('^\s+', '', beautifiedText)
+    beautifiedText = re.sub('\s{2,}', ' ', beautifiedText)
     beautifiedText = re.sub('\s+([,)\].;:])', '\g<1>', beautifiedText)
+    beautifiedText = re.sub('([(])\s+', '\g<1>', beautifiedText)
     return beautifiedText
 
 def getRandomWord(): 
