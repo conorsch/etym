@@ -37,7 +37,10 @@ from docopt import docopt
 def beautify(soup):
     # BeautifulSoup strips out whitespace around in-line markup tags, see 
     # http://stackoverflow.com/a/16767636 for explanation of solution used below.
-    beautifiedText = ' '.join(unicode(i.string) for i in soup)
+    beautifiedText = str()
+    for i in soup:
+        if i.string:
+            beautifiedText += ' ' + i.string
 
     # Clean up 
     beautifiedText = re.sub('\s{2,}', ' ', beautifiedText)
