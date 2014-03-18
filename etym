@@ -117,18 +117,17 @@ def main(args):
 
     if args['--random']:
     
-        if args['--number']:
-            attempts = int(args['--number'])
+        attempts = int(args['--number'])
 
-            while attempts > 0:
-                query = getRandomWord()
-                (hit, etymology) = performLookup(query, verbose=args['--verbose'], random=args['--random'])
-                displayResults(hit, etymology)
-                # Pad the entries with a line break, for better readability 
-                # when displaying multiple results.
-                attempts -= 1
-                if attempts > 0:
-                    print ''
+        while attempts > 0:
+            query = getRandomWord()
+            (hit, etymology) = performLookup(query, verbose=args['--verbose'], random=args['--random'])
+            displayResults(hit, etymology)
+            # Pad the entries with a line break, for better readability 
+            # when displaying multiple results.
+            attempts -= 1
+            if attempts > 0:
+                print ''
 
     else:
         (hit, etymology) = performLookup(query, verbose=args['--verbose'], random=args['--random'])
