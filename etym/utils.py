@@ -17,7 +17,7 @@ def beautify(soup):
     for i in soup:
         if i.string:
             if re.match(r'<span class="foreign">', str(i), re.UNICODE):
-                i.string = re.sub(r'<span class="foreign">(.+)</span>', r'{t.standout}\1{t.normal}'.format(t=term), str(i))
+                i.string = re.sub(r'<span class="foreign">(.+)</span>', r'{t.italic}\1{t.normal}'.format(t=term), str(i))
             beautifiedText += ' ' + i.string
 
     # Clean up 
