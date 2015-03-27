@@ -24,39 +24,11 @@ Options:
 """
 import os
 import sys
-import re
-import random
-import requests
-from textwrap import fill
 
-from BeautifulSoup import BeautifulSoup
-from blessings import Terminal
 from docopt import docopt
+
+import etym.utils
 from etym.exceptions import NoResultsFound
-
-
-
-def performLookup(query, verbose=None, random=None):
-
-    for attempts in range(5):
-        try:
-            (hit, etymology) = queryEtymOnline(query, verbose=verbose)
-
-        except NoResultsFound:
-            if verbose:
-                print "FAIL"
-            if random:
-                query = getRandomWord()
-                continue
-            else:
-                sys.exit("No etymology found for '%s'." % query)
-
-        except requests.exceptions.ConnectionError:
-            sys.exit("Could not query etymonline.com; check internet connection.")
-
-        break
-
-    return (hit, etymology)
 
 def main(args):
 
@@ -68,8 +40,8 @@ def main(args):
         attempts = int(args['--number'])
 
         while attempts > 0:
-            query = getRandomWord()
-            (hit, etymology) = performLookup(query, verbose=args['--verbose'], random=args['--random'])
+            query = etym.utils.getRandomWord()
+            (hit, etymology) = etym.utils.performLookup(query, verbose=args['--verbose'], random=args['--random'])
             displayResults(hit, etymology)
             # Pad the entries with a line break, for better readability 
             # when displaying multiple results.
@@ -78,8 +50,8 @@ def main(args):
                 print ''
 
     else:
-        (hit, etymology) = performLookup(query, verbose=args['--verbose'], random=args['--random'])
-        displayResults(hit, etymology)
+        (hit, etymology) = etym.utils.performLookup(query, verbose=args['--verbose'], random=args['--random'])
+        etym.utils.displayResults(hit, etymology)
 
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='etym v0.1')

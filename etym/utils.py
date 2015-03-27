@@ -1,3 +1,12 @@
+import requests
+from BeautifulSoup import BeautifulSoup
+from blessings import Terminal
+import re
+import random
+import requests
+from textwrap import fill
+from .exceptions import NoResultsFound
+
 def beautify(soup):
     """Parse BeautifulSoup HTML and return prettified string."""
     # BeautifulSoup strips out whitespace around in-line markup tags, see 
@@ -25,6 +34,7 @@ def getRandomWord():
     candidate = random.choice(open(dictFile).readlines()).rstrip('\n')
     return candidate
 
+
 def queryEtymOnline(query, verbose=None):
     """Perform lookup on etymonline.com."""
     if verbose:
@@ -44,8 +54,33 @@ def queryEtymOnline(query, verbose=None):
     etymology = beautify(soup.dd)
     return (hit, etymology)
 
+
 def displayResults(hit, etymology):
     """Render results to STDOUT, with pretty whitespace."""
     t = Terminal()
     print(t.bold(hit))
     print(fill(etymology, width=t.width))
+
+
+def performLookup(query, verbose=None, random=None):
+    """Wrapper for querying etymonline.com."""
+
+    for attempts in range(5):
+        try:
+            (hit, etymology) = queryEtymOnline(query, verbose=verbose)
+
+        except NoResultsFound:
+            if verbose:
+                print "FAIL"
+            if random:
+                query = getRandomWord()
+                continue
+            else:
+                sys.exit("No etymology found for '%s'." % query)
+
+        except requests.exceptions.ConnectionError:
+            sys.exit("Could not query etymonline.com; check internet connection.")
+
+        break
+
+    return (hit, etymology)
