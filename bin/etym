@@ -1,0 +1,58 @@
+#!/usr/bin/env python
+"""etym
+
+Queries etymonline.com for word or phrase, and displays 
+its etymology if found. Also supports looking up a random word.
+
+Usage:
+    etym [options] <word> ...
+    etym [options] --random [--number=<num>]
+
+Examples:
+    etym viking
+    etym --random
+    etym -rn 7
+
+Arguments:
+    <word>      word (or phrase) to look up
+
+Options:
+    -h --help               Show this screen.
+    -v --verbose            Verbose mode.
+    -r --random             Look up random word.
+    -n --number=<num>       Number of random words to look up [default: 1].
+"""
+import os
+import sys
+
+from docopt import docopt
+
+import etym.utils
+from etym.exceptions import NoResultsFound
+
+def main(args):
+
+    if args['<word>']:
+        query = ' '.join(args['<word>'])
+
+    if args['--random']:
+    
+        attempts = int(args['--number'])
+
+        while attempts > 0:
+            query = etym.utils.get_random_word()
+            (hit, etymology) = etym.utils.perform_lookup(query, verbose=args['--verbose'], random=args['--random'])
+            display_results(hit, etymology)
+            # Pad the entries with a line break, for better readability 
+            # when displaying multiple results.
+            attempts -= 1
+            if attempts > 0:
+                print ''
+
+    else:
+        (hit, etymology) = etym.utils.perform_lookup(query, verbose=args['--verbose'], random=args['--random'])
+        etym.utils.display_results(hit, etymology)
+
+if __name__ == '__main__':
+    arguments = docopt(__doc__, version='etym v0.1')
+    main(arguments)
