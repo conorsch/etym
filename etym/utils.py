@@ -28,7 +28,7 @@ def beautify(soup):
     return beautifiedText
 
 
-def getRandomWord(): 
+def get_random_word():
     """Fetch random word from system dictionary."""
     dictFile = "/usr/share/dict/words"
     assert os.path.exists(dictFile), "Could not find dictionary file at %s." % dictFile
@@ -36,7 +36,7 @@ def getRandomWord():
     return candidate
 
 
-def queryEtymOnline(query, verbose=None):
+def query_etym_online(query, verbose=None):
     """Perform lookup on etymonline.com."""
     if verbose:
         sys.stdout.write("Querying etymonline.com for '%s'... " % query)
@@ -56,19 +56,19 @@ def queryEtymOnline(query, verbose=None):
     return (hit, etymology)
 
 
-def displayResults(hit, etymology):
+def display_results(hit, etymology):
     """Render results to STDOUT, with pretty whitespace."""
     t = Terminal()
     print(t.bold(hit))
     print(fill(etymology, width=t.width))
 
 
-def performLookup(query, verbose=None, random=None):
+def perform_lookup(query, verbose=None, random=None):
     """Wrapper for querying etymonline.com."""
 
     for attempts in range(5):
         try:
-            (hit, etymology) = queryEtymOnline(query, verbose=verbose)
+            (hit, etymology) = query_etym_online(query, verbose=verbose)
 
         except NoResultsFound:
             if verbose:

@@ -40,9 +40,9 @@ def main(args):
         attempts = int(args['--number'])
 
         while attempts > 0:
-            query = etym.utils.getRandomWord()
-            (hit, etymology) = etym.utils.performLookup(query, verbose=args['--verbose'], random=args['--random'])
-            displayResults(hit, etymology)
+            query = etym.utils.get_random_word()
+            (hit, etymology) = etym.utils.perform_lookup(query, verbose=args['--verbose'], random=args['--random'])
+            display_results(hit, etymology)
             # Pad the entries with a line break, for better readability 
             # when displaying multiple results.
             attempts -= 1
@@ -50,8 +50,8 @@ def main(args):
                 print ''
 
     else:
-        (hit, etymology) = etym.utils.performLookup(query, verbose=args['--verbose'], random=args['--random'])
-        etym.utils.displayResults(hit, etymology)
+        (hit, etymology) = etym.utils.perform_lookup(query, verbose=args['--verbose'], random=args['--random'])
+        etym.utils.display_results(hit, etymology)
 
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='etym v0.1')
