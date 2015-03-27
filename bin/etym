@@ -32,6 +32,7 @@ from textwrap import fill
 from BeautifulSoup import BeautifulSoup
 from blessings import Terminal
 from docopt import docopt
+from etym.exceptions import NoResultsFound
 
 
 def beautify(soup):
@@ -57,13 +58,6 @@ def getRandomWord():
     assert os.path.exists(dictFile), "Could not find dictionary file at %s." % dictFile
     candidate = random.choice(open(dictFile).readlines()).rstrip('\n')
     return candidate
-
-class NoResultsFound(Exception):
-    def __init__(self, value):
-        self.value = "Found no hits for query '%s'." % value
-
-    def __str__(self):
-        return repr(self.value)
 
 def queryEtymOnline(query, verbose=None):
 
