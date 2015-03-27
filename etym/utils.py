@@ -1,11 +1,12 @@
-import requests
+from .exceptions import NoResultsFound
 from BeautifulSoup import BeautifulSoup
 from blessings import Terminal
-import re
-import random
-import requests
 from textwrap import fill
-from .exceptions import NoResultsFound
+import random
+import re
+import requests
+import requests
+
 
 def beautify(soup):
     """Parse BeautifulSoup HTML and return prettified string."""
