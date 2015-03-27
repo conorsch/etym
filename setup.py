@@ -3,7 +3,7 @@ from distutils.core import setup
 setup(
     name = 'etym',
     packages = ['etym'],
-    version = '0.0.1',
+    version = '0.0.2',
     description = 'Command-line interface for EtymOnline.com.',
     author = 'Conor Schaefer',
     author_email = 'conor.schaefer@gmail.com',
