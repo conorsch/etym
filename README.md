@@ -6,6 +6,12 @@ It formats the output nicely, using bold for keywords and italic for foreign wor
 Use `--random` if you have trouble choosing. Query from your terminal, 
 or set as a motd. 
 
+Installation
+------------
+
+    pip install etym
+
+
 Usage
 -----
 
@@ -41,7 +47,7 @@ Consider placing a call to this script with the `--random` option in your
 # ~/.bash_logout (or ~/.bash_login, if you prefer)
 etym --random
 ```
-The script will block for a moment, but the roundtrip is negible: 
+The script will block your login for a moment, but the roundtrip is negligible: 
 
 <pre><code>$ time etym --random
 <b>cudgel (v.)</b>
@@ -52,24 +58,9 @@ user    0m0.137s
 sys     0m0.032s
 </code></pre>
 
-The above examples assume you've added the script to your `$PATH`. 
-
-Installation
---------------
-
-```
-git clone https://github.com/ronocdh/etym
-cd etym
-pip install -r requirements.txt
-```
-
 Requirements
 ------------
 
-* [requests]: Excellent HTTP library for humans.
-* [BeautifulSoup]: Don't parse HTML without it.
-* [blessings]: For rich text formatting in terminal output.
-* [docopt]: Command-line args that make you smile.
 * List of words at `/usr/share/dict/words`
 * An active internet connection.
 
