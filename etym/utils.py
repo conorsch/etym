@@ -2,6 +2,7 @@ from .exceptions import NoResultsFound
 from BeautifulSoup import BeautifulSoup
 from blessings import Terminal
 from textwrap import fill
+import os
 import random
 import re
 import requests
@@ -20,10 +21,13 @@ def beautify(soup):
                 i.string = re.sub(r'<span class="foreign">(.+)</span>', r'{t.italic}\1{t.normal}'.format(t=term), str(i))
             beautifiedText += ' ' + i.string
 
-    # Clean up
+    # Remove leading whitespace.
     beautifiedText = re.sub('^\s+', '', beautifiedText)
+    # Compress all whitespace to a single space.
     beautifiedText = re.sub('\s{2,}', ' ', beautifiedText)
+    # Trim whitespace immediately preceding common punctuation.
     beautifiedText = re.sub('\s+([,)\].;:])', '\g<1>', beautifiedText)
+    # Trim whitespace immediately following common punctuation.
     beautifiedText = re.sub('([(])\s+', '\g<1>', beautifiedText)
     return beautifiedText
 
@@ -52,8 +56,11 @@ def query_etym_online(query, verbose=None):
     if verbose:
         print "OK"
 
-    etymology = beautify(soup.dd)
-    return (hit, etymology)
+    hits = [ x.a.text for x in soup.findAll('dt', { 'class': 'highlight' } ) ]
+    etyms = [ beautify(x) for x in soup.findAll('dd', { 'class': 'highlight' } ) ]
+    results = zip(hits, etyms)
+
+    return results
 
 
 def display_results(hit, etymology):
@@ -68,13 +75,13 @@ def perform_lookup(query, verbose=None, random=None):
 
     for attempts in range(5):
         try:
-            (hit, etymology) = query_etym_online(query, verbose=verbose)
+            results = query_etym_online(query, verbose=verbose)
 
         except NoResultsFound:
             if verbose:
                 print "FAIL"
             if random:
-                query = getRandomWord()
+                query = get_random_word()
                 continue
             else:
                 sys.exit("No etymology found for '%s'." % query)
@@ -84,4 +91,4 @@ def perform_lookup(query, verbose=None, random=None):
 
         break
 
-    return (hit, etymology)
+    return results
