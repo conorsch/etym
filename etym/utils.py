@@ -5,12 +5,12 @@ from textwrap import fill
 import random
 import re
 import requests
-import requests
+import sys
 
 
 def beautify(soup):
     """Parse BeautifulSoup HTML and return prettified string."""
-    # BeautifulSoup strips out whitespace around in-line markup tags, see 
+    # BeautifulSoup strips out whitespace around in-line markup tags, see
     # http://stackoverflow.com/a/16767636 for explanation of solution used below.
     beautifiedText = str()
     term = Terminal()
@@ -20,7 +20,7 @@ def beautify(soup):
                 i.string = re.sub(r'<span class="foreign">(.+)</span>', r'{t.italic}\1{t.normal}'.format(t=term), str(i))
             beautifiedText += ' ' + i.string
 
-    # Clean up 
+    # Clean up
     beautifiedText = re.sub('^\s+', '', beautifiedText)
     beautifiedText = re.sub('\s{2,}', ' ', beautifiedText)
     beautifiedText = re.sub('\s+([,)\].;:])', '\g<1>', beautifiedText)
