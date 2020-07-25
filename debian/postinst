@@ -1,0 +1,3 @@
+#!/bin/sh
+
+ln -s /opt/venvs/etym/bin/etym -f /usr/bin/etym

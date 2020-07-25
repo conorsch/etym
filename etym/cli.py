@@ -7,6 +7,7 @@ import sys
 import etym.utils
 import etym
 from etym import __version__
+from .exceptions import NoResultsFound
 
 
 def display_in_terminal(hit: str, etymology: str) -> None:
@@ -18,7 +19,7 @@ def display_in_terminal(hit: str, etymology: str) -> None:
     print(fill(etymology, width=t.width))
 
 
-def main() -> None:
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("word", action="store", type=str)
     parser.add_argument("--verbose", action="store_true", default=False)
@@ -31,7 +32,12 @@ def main() -> None:
         print("etym v{}".format(__version__))
     else:
         query = args.word
-        result = etym.utils.query_etym_online(query, verbose=args.verbose)
+        try:
+            result = etym.utils.query_etym_online(query, verbose=args.verbose)
+        except NoResultsFound as e:
+            sys.stderr.write(repr(e) + "\n")
+            return 1
+
         if sys.stdout.isatty():
             t = Terminal()
             print(t.bold(query))
@@ -39,7 +45,8 @@ def main() -> None:
         else:
             print(query)
             print(result)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

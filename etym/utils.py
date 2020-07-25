@@ -14,6 +14,9 @@ def query_etym_online(query: str, verbose: bool = False) -> str:
     except IndexError:
         raise NoResultsFound(query)
     s = beautify(hit)
+    # Happens when no hits were found
+    if s == "links":
+        raise NoResultsFound(query)
     return s
 
 

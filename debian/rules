@@ -1,0 +1,23 @@
+#!/usr/bin/make -f
+
+export SOURCE_DATE_EPOCH ?= $(shell dpkg-parsechangelog -STimestamp)
+
+%:
+	dh $@ --with python-virtualenv
+
+override_dh_virtualenv:
+	dh_virtualenv \
+		--python /usr/bin/python3 \
+		--setuptools \
+		--use-system-packages \
+		--extra-pip-arg "--ignore-installed" \
+		--extra-pip-arg "--no-deps" \
+		--extra-pip-arg "--no-cache-dir" \
+		--requirements requirements.txt
+
+
+override_dh_strip_nondeterminism:
+	find ./debian/ -type f -name '*.pyc' -delete
+	find ./debian/ -type f -name 'pip-selfcheck.json' -delete
+	find -type f -name RECORD -exec sed -i -e '/.*\.pyc.*/d' {} +
+	dh_strip_nondeterminism $@

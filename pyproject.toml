@@ -11,6 +11,7 @@ etym = "etym.cli:main"
 python = "^3.7"
 beautifulsoup4 = "^4.9.1"
 requests = "^2.24.0"
+blessings = "^1.7"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

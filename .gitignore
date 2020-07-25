@@ -1,3 +1,14 @@
 *.tar.gz
 *.whl
 *egg-info/
+dist/
+*.deb
+
+
+
+debian/.debhelper/
+debian/etym.debhelper.log
+debian/etym.postinst.debhelper
+debian/etym.substvars
+debian/etym/
+debian/files
