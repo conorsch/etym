@@ -1,3 +1,0 @@
-# Taken from https://dh-virtualenv.readthedocs.io/en/latest/tutorial.html
-interest-noawait /usr/bin/python3
-interest dh-virtualenv-interpreter-update

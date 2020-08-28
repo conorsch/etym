@@ -1,0 +1,27 @@
+[package]
+name = "etym"
+version = "0.0.5-alpha.0"
+edition = "2021"
+authors = ["Conor Schaefer <conor@ruin.dev>"]
+description = "Queries EtymOnline.com to look up etymologies for words"
+readme = "README.md"
+include = ["src/main.rs", "LICENSE", "README.md", "tests/fixture-viking.html", "!**/tests/**/*"]
+license = "MIT"
+repository = "https://github.com/conorsch/etym"
+categories = ["command-line-utilities"]
+keywords = ["etymology", "linguistics", "cli"]
+
+[dependencies]
+clap = { version = "3.1.11", features = ["cargo"] }
+regex = "1.5.6"
+scraper = "0.13.0"
+textwrap = { version = "0.15.0", features = ["terminal_size"] }
+ureq = "2.4.0"
+
+[package.metadata.deb]
+section = "misc"
+depends = ""
+name = "etym"
+assets = [
+  ["target/x86_64-unknown-linux-musl/release/etym", "usr/bin/", "755"],
+]
