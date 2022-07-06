@@ -1,6 +1,6 @@
 [package]
 name = "etym"
-version = "0.0.5-alpha.0"
+version = "0.0.5"
 edition = "2021"
 authors = ["Conor Schaefer <conor@ruin.dev>"]
 description = "Queries EtymOnline.com to look up etymologies for words"
