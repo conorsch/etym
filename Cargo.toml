@@ -15,7 +15,7 @@ keywords = ["etymology", "linguistics", "cli"]
 anyhow = "1"
 clap = { version = "3", features = ["cargo"] }
 regex = "1"
-scraper = "0.13"
+scraper = "0.15"
 textwrap = { version = "0.16", features = ["terminal_size"] }
 ureq = "2"
 
