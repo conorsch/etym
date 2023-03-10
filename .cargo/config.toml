@@ -1,9 +1,0 @@
-[build]
-# use musl for statically linked binaries
-target = "x86_64-unknown-linux-musl"
-
-[target.x86_64-unknown-linux-musl]
-# lld is marginally (5-10%) faster for compile times
-rustflags = [
-    "-C", "link-arg=-fuse-ld=lld",
-]
