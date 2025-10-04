@@ -14,18 +14,13 @@ fn main() -> anyhow::Result<()> {
     if let Some(word) = matches.value_of("word") {
         let e = match etym::Etymology::new(word) {
             Ok(r) => r,
-            Err(_) => {
-                return Err(anyhow::anyhow!(format!(
-                    "Failed to find an etymology for '{}'",
-                    word
-                )))
-            }
+            Err(_) => return Err(anyhow::anyhow!("Failed to find an etymology for '{word}'")),
         };
         // Manually bold the search term
         println!("\x1b[1m{}\x1b[22m", e.label);
         let w = textwrap::termwidth();
         let s = textwrap::fill(&e.etymology, w);
-        println!("{}", s);
+        println!("{s}");
     } else {
         return Err(anyhow::anyhow!("No word to search for was supplied"));
     }

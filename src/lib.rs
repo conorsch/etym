@@ -50,6 +50,57 @@ impl Etymology {
 
     /// From raw HTML results of query, excise just the first definition found.
     pub fn extract_etymology_html(raw_html: &str) -> Result<String> {
+        // Try new format first (JSON in JavaScript)
+        // The structure has word entries with: "word":"...", "property":"...", "etymology":"..."
+        // We need to find a complete word entry (not other JSON in the page)
+        // The etymology field contains escaped HTML and ends with ","thumbnail"
+        // We match everything up to the closing quote+comma: \","
+        let re_word_entry = Regex::new(
+            r#"\\"word\\":\\"[^\\]+\\",\\"canonical_word\\":\\"[^\\]+\\",\\"type\\":\d+,\\"property\\":\\"[^\\]*\\",\\"etymology\\":\\"(.*?)\\",\\"thumbnail\\""#
+        )?;
+
+        if let Some(caps) = re_word_entry.captures(raw_html) {
+            let etym_value = caps.get(1).unwrap().as_str();
+
+            // If it's a reference like "$2e", we need to find the referenced content
+            if etym_value.starts_with('$') {
+                let ref_id = &etym_value[1..]; // Remove the $
+                // The pattern is: one push has "2e:Taf2," and the NEXT push has the content
+                // First, find the push that declares the reference
+                let ref_pattern = format!(r#"{}:[^,]+,"#, regex::escape(ref_id));
+                let re_ref = Regex::new(&ref_pattern)?;
+
+                if let Some(ref_match) = re_ref.find(raw_html) {
+                    // Now find the next self.__next_f.push after this position
+                    let after_ref = &raw_html[ref_match.end()..];
+                    let re_next_push = Regex::new(r#"self\.__next_f\.push\(\[1,"([^"]*(?:\\.[^"]*)*)"\]\)"#)?;
+
+                    if let Some(next_caps) = re_next_push.captures(after_ref) {
+                        let etym_html = next_caps.get(1).unwrap().as_str();
+                        // The HTML is escaped with \u003c for < and \u003e for >
+                        let decoded = etym_html
+                            .replace(r"\u003c", "<")
+                            .replace(r"\u003e", ">")
+                            .replace(r"\n", "\n")
+                            .replace(r#"\""#, "\"");
+                        return Ok(format!("<div>{}</div>", decoded));
+                    }
+                }
+            } else if etym_value.contains(r"\u003c") || etym_value.contains(r"u003c") {
+                // It's inline escaped HTML
+                let decoded = etym_value
+                    .replace(r"\u003c", "<")
+                    .replace(r"\u003e", ">")
+                    .replace(r"u003c", "<")
+                    .replace(r"u003e", ">")
+                    .replace(r"\n", "\n")
+                    .replace(r#"\\""#, "\"")  // \" in the JSON string
+                    .replace(r#"\""#, "\"");   // Also handle \" directly
+                return Ok(format!("<div>{}</div>", decoded));
+            }
+        }
+
+        // Fallback to old format
         let d = Html::parse_document(raw_html);
         let section_selector = Selector::parse("section")
             .map_err(|_| anyhow::anyhow!("Failed to parse HTML section for entry"))?;
@@ -68,18 +119,26 @@ impl Etymology {
 
     /// Extract the entry name, e.g. `Viking (n.)`
     pub fn extract_word_name(raw_html: &str) -> Result<String> {
-        let d = Html::parse_document(raw_html);
-        let section_selector = Selector::parse("a")
-            .map_err(|_| anyhow::anyhow!("Failed to parse 'a' element for word entry"))?;
-        for x in d.select(&section_selector) {
-            if let Some(y) = x.value().attr("class") {
-                if y.starts_with("word__name") {
-                    // Pad with custom div, so we can easily retrieve the entirety again
-                    // in `beautify`.
-                    let word_name = x.text().collect::<String>();
-                    return Ok(word_name);
-                }
+        // Try new format first (JSON in JavaScript)
+        // In the HTML, quotes are escaped as \"
+        let re_word = Regex::new(r#"\\"word\\":\\"([^\\]+)\\",\\"canonical_word\\":\\"[^\\]+\\",\\"type\\":\d+,\\"property\\":\\"([^\\]*)\\""#)?;
+        if let Some(caps) = re_word.captures(raw_html) {
+            let word = caps.get(1).unwrap().as_str();
+            let property = caps.get(2).unwrap().as_str();
+            if property.is_empty() {
+                return Ok(word.to_string());
+            } else {
+                return Ok(format!("{} {}", word, property));
             }
+        }
+
+        // Fallback to old format
+        let d = Html::parse_document(raw_html);
+        let section_selector = Selector::parse("span[id^='etymonline_v_']")
+            .map_err(|_| anyhow::anyhow!("Failed to parse 'span' element for word entry"))?;
+        if let Some(x) = d.select(&section_selector).next() {
+            let word_name = x.text().collect::<String>();
+            return Ok(word_name);
         }
         anyhow::bail!("Failed to find word name within HTML")
     }
@@ -90,12 +149,12 @@ impl Etymology {
 /// Returns raw HTML results.
 fn query_etym_online(word: &str) -> Result<String> {
     // TODO: we should urlescape the word, in case it has spaces
-    let url = format!("https://www.etymonline.com/search?q={}", word);
+    let url = format!("https://www.etymonline.com/search?q={word}");
     // Fetch HTML
     ureq::get(&url)
         .call()?
         .into_string()
-        .map_err(|_| anyhow::anyhow!(format!("Failed to query EtymOnline; network error?")))
+        .map_err(|_| anyhow::anyhow!("Failed to query EtymOnline; network error?"))
 }
 
 #[cfg(test)]
@@ -103,29 +162,64 @@ mod tests {
     use super::*;
 
     #[test]
-    fn can_import_fixture() {
+    fn parse_html() {
         let raw_html = include_str!("../tests/fixture-viking.html");
-        assert!(raw_html != "foo");
-    }
+        // Test that we can parse the new HTML structure
+        // The new format is server-side rendered with JSON data in script tags
+        assert!(raw_html.contains("entries found"));
+        // Quotes are escaped in the script tags
+        assert!(raw_html.contains(r#"\"word\":\"Viking\""#));
 
-    #[test]
-    fn can_parse_html() {
-        let raw_html = include_str!("../tests/fixture-viking.html");
+        // Also verify we can parse it as HTML document
         let document = Html::parse_document(raw_html);
-        let selector = Selector::parse("div#root").unwrap();
-        let root_div = document.select(&selector).next().unwrap();
-        assert!(root_div.value().name() == "div");
-        assert!(root_div.value().id() == Some("root"));
-        let root_text = root_div.text().collect::<String>();
-        assert!(root_text.starts_with("Adver"));
+        let selector = Selector::parse("body").unwrap();
+        let body = document.select(&selector).next().unwrap();
+        assert!(body.value().name() == "body");
     }
 
     #[test]
     fn html_markup_removed_from_etym() {
         let raw_html = include_str!("../tests/fixture-viking.html");
-        let _h = Etymology::extract_etymology_html(&raw_html);
-        let e = Etymology::new("viking").unwrap();
-        assert!(e.word == "viking");
-        assert!(!e.etymology.contains("<span class=\"foreign notranslate\">"));
+
+        // Test extraction of etymology HTML
+        let etym_html = Etymology::extract_etymology_html(&raw_html).unwrap();
+        assert!(etym_html.contains("Scandinavian pirate"));
+        assert!(etym_html.contains("vikingr"));
+
+        // Test extraction and beautification
+        let label = Etymology::extract_word_name(&raw_html).unwrap();
+        assert_eq!(label, "Viking (n.)");
+
+        let etymology = Etymology::beautify(&etym_html).unwrap();
+        assert!(etymology.contains("Scandinavian pirate"));
+        assert!(etymology.contains("vikingr"));
+        // HTML markup should be removed
+        assert!(!etymology.contains("<span class=\"foreign notranslate\">"));
+        assert!(!etymology.contains("<p>"));
+    }
+
+    #[test]
+    fn scrimshaw_inline_etymology() {
+        let raw_html = include_str!("../tests/fixture-scrimshaw.html");
+
+        // Test extraction of etymology HTML (inline, not $ref)
+        let etym_html = Etymology::extract_etymology_html(&raw_html).unwrap();
+        assert!(etym_html.contains("shell or piece of ivory"));
+        assert!(etym_html.contains("scrimshon"));
+
+        // Test extraction and beautification
+        let label = Etymology::extract_word_name(&raw_html).unwrap();
+        assert_eq!(label, "scrimshaw (n.)");
+
+        let etymology = Etymology::beautify(&etym_html).unwrap();
+        assert!(etymology.contains("shell or piece of ivory"));
+        assert!(etymology.contains("scrimshon"));
+        // Should NOT contain cruft from the page
+        assert!(!etymology.contains("localStorage"));
+        assert!(!etymology.contains("Log in"));
+        assert!(!etymology.contains("Remove Ads"));
+        // HTML markup should be removed
+        assert!(!etymology.contains("<span class=\"foreign notranslate\">"));
+        assert!(!etymology.contains("<p>"));
     }
 }
