@@ -1,5 +1,9 @@
 # etym changelog
 
+## 0.0.9
+
+* Add nix flake for easier installation
+
 ## 0.0.8
 
 * Fix HTML parsing for 2025 website
