@@ -3,7 +3,8 @@
 *egg-info/
 *.deb
 
+# nix
+/result
 
 # Added by cargo
-
 /target
