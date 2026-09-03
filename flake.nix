@@ -36,6 +36,37 @@
         ];
         craneLib = crane.mkLib pkgs;
         cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+
+        etymSrc = pkgs.lib.cleanSourceWith {
+          src = ./.;
+          filter = path: type:
+            (craneLib.filterCargoSources path type) ||
+            (builtins.match ".*/tests/fixture-.*\.html$" path != null);
+        };
+
+        # A version bump must not invalidate the dependency-only derivation.
+        # The version reaches it through the drv's own version attribute, the
+        # cleaned Cargo.toml in crane's dummy source, and the etym entry in
+        # the verbatim Cargo.lock — close all three. Same treatment as
+        # ruindev-tools; see its docs/nix-cargo-caching-research.md.
+        cargoArtifacts = craneLib.buildDepsOnly {
+          pname = "etym";
+          version = "0.0.0";
+          dummySrc = craneLib.mkDummySrc {
+            src = pkgs.lib.cleanSourceWith {
+              src = etymSrc;
+              filter = path: _type: baseNameOf path != "Cargo.lock";
+            };
+            cargoLock = pkgs.writeText "Cargo.lock" (builtins.replaceStrings
+              [ "name = \"etym\"\nversion = \"${cargoToml.package.version}\"" ]
+              [ "name = \"etym\"\nversion = \"0.0.0\"" ]
+              (builtins.readFile ./Cargo.lock));
+            cleanCargoTomlFilter = path:
+              path != [ "package" "version" ]
+              && craneLib.filters.cargoTomlConservative path;
+          };
+          cargoVendorDir = craneLib.vendorCargoDeps { src = etymSrc; };
+        };
       in
       {
         devShells.default = pkgs.mkShell {
@@ -45,12 +76,8 @@
         };
 
         packages.etym = craneLib.buildPackage {
-          src = pkgs.lib.cleanSourceWith {
-            src = ./.;
-            filter = path: type:
-              (craneLib.filterCargoSources path type) ||
-              (builtins.match ".*/tests/fixture-.*\.html$" path != null);
-          };
+          src = etymSrc;
+          inherit cargoArtifacts;
           pname = "etym";
           version = cargoToml.package.version;
           meta = {

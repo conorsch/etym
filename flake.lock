@@ -2,11 +2,11 @@
   "nodes": {
     "crane": {
       "locked": {
-        "lastModified": 1766194365,
-        "narHash": "sha256-4AFsUZ0kl6MXSm4BaQgItD0VGlEKR3iq7gIaL7TjBvc=",
+        "lastModified": 1788310914,
+        "narHash": "sha256-B2vIgrwKQd2hFdSgzF2fvqqkzIkJtBlUGc85cKZh0e4=",
         "owner": "ipetkov",
         "repo": "crane",
-        "rev": "7d8ec2c71771937ab99790b45e6d9b93d15d9379",
+        "rev": "d852f62f060ef43937a78d409f63625c82b25af3",
         "type": "github"
       },
       "original": {
