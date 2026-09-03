@@ -18,6 +18,10 @@ update-fixtures:
 test:
   cargo test
 
+# run integration tests (requires network)
+integration:
+  cargo test --test integration --features integration
+
 # bump an alpha release
 bump:
   cargo release version alpha --execute

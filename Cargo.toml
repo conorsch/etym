@@ -11,6 +11,11 @@ repository = "https://github.com/conorsch/etym"
 categories = ["command-line-utilities"]
 keywords = ["etymology", "linguistics", "cli"]
 
+[features]
+default = []
+# Live-network integration tests that hit EtymOnline.com.
+integration = []
+
 [dependencies]
 anyhow = "1"
 clap = { version = "3", features = ["cargo"] }

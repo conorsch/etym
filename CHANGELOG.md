@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* test: integration tests to exercise CLI interface
 * Update nixpkgs to 26.05
 * Add envrc flake for direnv integration
 * Add justfile for common commands
