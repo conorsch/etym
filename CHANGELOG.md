@@ -1,5 +1,9 @@
 # etym changelog
 
+## Unreleased
+
+* Cache nix build dependencies independently of the crate version
+
 ## 0.0.9
 
 * Add nix flake for easier installation
