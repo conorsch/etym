@@ -1,6 +1,6 @@
 [package]
 name = "etym"
-version = "0.0.9"
+version = "0.0.10-alpha.1"
 edition = "2021"
 authors = ["Conor Schaefer <conor@ruin.dev>"]
 description = "Queries EtymOnline.com to look up etymologies for words"
@@ -26,3 +26,19 @@ name = "etym"
 assets = [
   ["target/x86_64-unknown-linux-musl/release/etym", "usr/bin/", "755"],
 ]
+
+# config for 'cargo release'
+[workspace.metadata.release]
+tag-name = "v{{version}}"
+tag-message                = "etym version {{version}}"
+pre-release-commit-message = "chore: release version {{version}}"
+# Don't bother with crates.io publishing; installation is handled via nix flake.
+publish = false
+# Do commit, tag, and push the version bump, triggering a new release.
+tag = true
+# Don't push to remote; that's something I always do manually.
+push = false
+# Edit each crate's Cargo.toml, bumping versions for other workspace crates.
+dependent-version = "upgrade"
+# Permit publishing from any branch, because I often prepare releases on feature branches.
+allow-branch = ["*"]

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+* Update nixpkgs to 26.05
+* Add envrc flake for direnv integration
+* Add justfile for common commands
 * Cache nix build dependencies independently of the crate version
 
 ## 0.0.9

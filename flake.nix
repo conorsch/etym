@@ -24,6 +24,7 @@
         # Defining package list outside of devshell, so it can be used in devshell & container image.
         tooling = with pkgs; [
           bashInteractive
+          cargo-release
           coreutils
           fd
           file
