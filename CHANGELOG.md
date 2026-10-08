@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.0.10 (2026-10-08)
+
 * fix: query EtymOnline's RSC endpoint; HTML pages are now Cloudflare-challenged
 * Refresh test fixtures as raw React flight payloads (`.rsc`)
 * test: integration tests to exercise CLI interface
