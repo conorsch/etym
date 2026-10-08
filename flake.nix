@@ -42,7 +42,7 @@
           src = ./.;
           filter = path: type:
             (craneLib.filterCargoSources path type) ||
-            (builtins.match ".*/tests/fixture-.*\.html$" path != null);
+            (builtins.match ".*/tests/fixture-.*\.rsc$" path != null);
         };
 
         # A version bump must not invalidate the dependency-only derivation.

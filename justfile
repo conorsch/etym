@@ -6,7 +6,7 @@ alias lint := check
 
 # build project
 build:
-  cargo build
+  cargo -q build
   nix build --no-link
 
 # fetch fresh copies of EtymOnline flight payloads, as fixed state for tests
