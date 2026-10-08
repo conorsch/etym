@@ -9,10 +9,11 @@ build:
   cargo build
   nix build --no-link
 
-# fetch fresh copies of EtymOnline pags, as fixed state for tests
+# fetch fresh copies of EtymOnline flight payloads, as fixed state for tests
+# (HTML pages are Cloudflare-challenged; the RSC header gets the raw payload)
 update-fixtures:
-  curl "https://www.etymonline.com/search?q=viking" | tidy > tests/fixture-viking.html || true
-  curl "https://www.etymonline.com/search?q=scrimshaw" | tidy > tests/fixture-scrimshaw.html || true
+  curl -H 'RSC: 1' "https://www.etymonline.com/search?q=viking" > tests/fixture-viking.rsc
+  curl -H 'RSC: 1' "https://www.etymonline.com/search?q=scrimshaw" > tests/fixture-scrimshaw.rsc
 
 # run unit tests
 test:

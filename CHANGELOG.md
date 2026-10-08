@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* fix: query EtymOnline's RSC endpoint; HTML pages are now Cloudflare-challenged
+* Refresh test fixtures as raw React flight payloads (`.rsc`)
 * test: integration tests to exercise CLI interface
 * Update nixpkgs to 26.05
 * Add envrc flake for direnv integration

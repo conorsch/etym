@@ -48,110 +48,110 @@ impl Etymology {
         Ok(html.select(&sel).next().unwrap().text().collect::<String>())
     }
 
-    /// From raw HTML results of query, excise just the first definition found.
-    pub fn extract_etymology_html(raw_html: &str) -> Result<String> {
-        // Try new format first (JSON in JavaScript)
-        // The structure has word entries with: "word":"...", "property":"...", "etymology":"..."
-        // We need to find a complete word entry (not other JSON in the page)
-        // The etymology field contains escaped HTML and ends with ","thumbnail"
-        // We match everything up to the closing quote+comma: \","
-        let re_word_entry = Regex::new(
-            r#"\\"word\\":\\"[^\\]+\\",\\"canonical_word\\":\\"[^\\]+\\",\\"type\\":\d+,\\"property\\":\\"[^\\]*\\",\\"etymology\\":\\"(.*?)\\",\\"thumbnail\\""#
-        )?;
-
-        if let Some(caps) = re_word_entry.captures(raw_html) {
-            let etym_value = caps.get(1).unwrap().as_str();
-
-            // If it's a reference like "$2e", we need to find the referenced content
-            if etym_value.starts_with('$') {
-                let ref_id = &etym_value[1..]; // Remove the $
-                // The pattern is: one push has "2e:Taf2," and the NEXT push has the content
-                // First, find the push that declares the reference
-                let ref_pattern = format!(r#"{}:[^,]+,"#, regex::escape(ref_id));
-                let re_ref = Regex::new(&ref_pattern)?;
-
-                if let Some(ref_match) = re_ref.find(raw_html) {
-                    // Now find the next self.__next_f.push after this position
-                    let after_ref = &raw_html[ref_match.end()..];
-                    let re_next_push = Regex::new(r#"self\.__next_f\.push\(\[1,"([^"]*(?:\\.[^"]*)*)"\]\)"#)?;
-
-                    if let Some(next_caps) = re_next_push.captures(after_ref) {
-                        let etym_html = next_caps.get(1).unwrap().as_str();
-                        // The HTML is escaped with \u003c for < and \u003e for >
-                        let decoded = etym_html
-                            .replace(r"\u003c", "<")
-                            .replace(r"\u003e", ">")
-                            .replace(r"\n", "\n")
-                            .replace(r#"\""#, "\"");
-                        return Ok(format!("<div>{}</div>", decoded));
-                    }
-                }
-            } else if etym_value.contains(r"\u003c") || etym_value.contains(r"u003c") {
-                // It's inline escaped HTML
-                let decoded = etym_value
-                    .replace(r"\u003c", "<")
-                    .replace(r"\u003e", ">")
-                    .replace(r"u003c", "<")
-                    .replace(r"u003e", ">")
-                    .replace(r"\n", "\n")
-                    .replace(r#"\\""#, "\"")  // \" in the JSON string
-                    .replace(r#"\""#, "\"");   // Also handle \" directly
-                return Ok(format!("<div>{}</div>", decoded));
-            }
-        }
-
-        // Fallback to old format
-        let d = Html::parse_document(raw_html);
-        let section_selector = Selector::parse("section")
-            .map_err(|_| anyhow::anyhow!("Failed to parse HTML section for entry"))?;
-        for x in d.select(&section_selector) {
-            if let Some(y) = x.value().attr("class") {
-                if y.starts_with("word__def") {
-                    // Pad with custom div, so we can easily retrieve the entirety again
-                    // in `beautify`.
-                    let etym_html = format!("<div>{}</div>", x.inner_html());
-                    return Ok(etym_html);
-                }
-            }
-        }
-        Ok(raw_html.to_string())
+    /// From the flight payload of a query, excise just the first definition found.
+    ///
+    /// The payload is a React Server Component ("flight") stream. Word entries
+    /// appear as plain JSON, e.g. `"word":{...,"etymology":"...","thumbnail":...}`.
+    /// The etymology value is either inline HTML (a JSON string, so quotes are
+    /// `\"`-escaped) or a lazy reference like `"$26"`, pointing to a text chunk
+    /// declared elsewhere in the stream as `<id>:T<hex length>,<raw html>`.
+    pub fn extract_etymology_html(payload: &str) -> Result<String> {
+        // Capture a JSON string value, honoring backslash escapes.
+        let re = Regex::new(r#""etymology":"((?:[^"\\]|\\.)*)","thumbnail""#)?;
+        let caps = re
+            .captures(payload)
+            .ok_or_else(|| anyhow::anyhow!("Failed to find etymology within payload"))?;
+        let value = caps.get(1).unwrap().as_str();
+        let html = match value.strip_prefix('$') {
+            Some(id) => resolve_flight_text(payload, id)?,
+            None => json_unescape(value),
+        };
+        // Pad with custom div, so we can easily retrieve the entirety again
+        // in `beautify`.
+        Ok(format!("<div>{html}</div>"))
     }
 
     /// Extract the entry name, e.g. `Viking (n.)`
-    pub fn extract_word_name(raw_html: &str) -> Result<String> {
-        // Try new format first (JSON in JavaScript)
-        // In the HTML, quotes are escaped as \"
-        let re_word = Regex::new(r#"\\"word\\":\\"([^\\]+)\\",\\"canonical_word\\":\\"[^\\]+\\",\\"type\\":\d+,\\"property\\":\\"([^\\]*)\\""#)?;
-        if let Some(caps) = re_word.captures(raw_html) {
-            let word = caps.get(1).unwrap().as_str();
-            let property = caps.get(2).unwrap().as_str();
-            if property.is_empty() {
-                return Ok(word.to_string());
-            } else {
-                return Ok(format!("{} {}", word, property));
-            }
+    pub fn extract_word_name(payload: &str) -> Result<String> {
+        let re = Regex::new(
+            r#""word":"((?:[^"\\]|\\.)*)","canonical_word":"(?:[^"\\]|\.)*","type":\d+,"property":"((?:[^"\\]|\\.)*)""#,
+        )?;
+        let caps = re
+            .captures(payload)
+            .ok_or_else(|| anyhow::anyhow!("Failed to find word name within payload"))?;
+        let word = json_unescape(caps.get(1).unwrap().as_str());
+        let property = json_unescape(caps.get(2).unwrap().as_str());
+        if property.is_empty() {
+            Ok(word)
+        } else {
+            Ok(format!("{word} {property}"))
         }
-
-        // Fallback to old format
-        let d = Html::parse_document(raw_html);
-        let section_selector = Selector::parse("span[id^='etymonline_v_']")
-            .map_err(|_| anyhow::anyhow!("Failed to parse 'span' element for word entry"))?;
-        if let Some(x) = d.select(&section_selector).next() {
-            let word_name = x.text().collect::<String>();
-            return Ok(word_name);
-        }
-        anyhow::bail!("Failed to find word name within HTML")
     }
+}
+
+/// Resolve a flight-stream text chunk reference, e.g. `$26` names the chunk
+/// declared as `26:T<hex>,...` where `<hex>` is the byte length of the raw
+/// (unescaped) text following the comma.
+fn resolve_flight_text(payload: &str, id: &str) -> Result<String> {
+    let re = Regex::new(&format!(r"(?m)^{}:T([0-9a-f]+),", regex::escape(id)))?;
+    let caps = re
+        .captures(payload)
+        .ok_or_else(|| anyhow::anyhow!("Failed to resolve flight text chunk '{id}'"))?;
+    let len = usize::from_str_radix(caps.get(1).unwrap().as_str(), 16)?;
+    let start = caps.get(0).unwrap().end();
+    let mut end = (start + len).min(payload.len());
+    while end > start && !payload.is_char_boundary(end) {
+        end -= 1;
+    }
+    Ok(payload[start..end].to_owned())
+}
+
+/// Decode the escapes permitted in a JSON string: `\"`, `\\`, `\n`, `\r`,
+/// `\t`, and `\uXXXX` (which Next.js uses for `<`, `>`, and `&`).
+fn json_unescape(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c != '\\' {
+            out.push(c);
+            continue;
+        }
+        match chars.next() {
+            Some('n') => out.push('\n'),
+            Some('r') => out.push('\r'),
+            Some('t') => out.push('\t'),
+            Some('u') => {
+                let hex: String = chars.by_ref().take(4).collect();
+                match u32::from_str_radix(&hex, 16).ok().and_then(char::from_u32) {
+                    Some(c) => out.push(c),
+                    None => {
+                        out.push_str("\\u");
+                        out.push_str(&hex);
+                    }
+                }
+            }
+            Some(c) => out.push(c),
+            None => out.push('\\'),
+        }
+    }
+    out
 }
 
 /// Perform HTTP GET to query EtymOnline.com.
 /// Requires a search term. Currently NOT URL-encoded.
-/// Returns raw HTML results.
+///
+/// Since late 2025, EtymOnline fronts its HTML pages with a Cloudflare
+/// JavaScript challenge that defeats any non-browser client. The site is a
+/// Next.js app, though, and its React Server Component endpoint answers plainly
+/// when the request carries the `RSC: 1` header: instead of HTML, we receive a
+/// "flight" payload containing the fully server-rendered entry data as JSON.
+///
+/// Returns the raw flight payload.
 fn query_etym_online(word: &str) -> Result<String> {
     // TODO: we should urlescape the word, in case it has spaces
     let url = format!("https://www.etymonline.com/search?q={word}");
-    // Fetch HTML
     ureq::get(&url)
+        .set("RSC", "1")
         .call()?
         .into_string()
         .map_err(|_| anyhow::anyhow!("Failed to query EtymOnline; network error?"))
@@ -162,32 +162,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_html() {
-        let raw_html = include_str!("../tests/fixture-viking.html");
-        // Test that we can parse the new HTML structure
-        // The new format is server-side rendered with JSON data in script tags
-        assert!(raw_html.contains("entries found"));
-        // Quotes are escaped in the script tags
-        assert!(raw_html.contains(r#"\"word\":\"Viking\""#));
-
-        // Also verify we can parse it as HTML document
-        let document = Html::parse_document(raw_html);
-        let selector = Selector::parse("body").unwrap();
-        let body = document.select(&selector).next().unwrap();
-        assert!(body.value().name() == "body");
+    fn parse_flight_payload() {
+        let payload = include_str!("../tests/fixture-viking.rsc");
+        // The flight payload is a React Server Component stream carrying the
+        // server-rendered search results as JSON.
+        assert!(payload.contains("entries found"));
+        assert!(payload.contains(r#""word":"Viking""#));
+        // Lazy text chunks are declared as `<id>:T<hex length>,`
+        assert!(Regex::new(r"(?m)^[0-9a-f]+:T[0-9a-f]+,").unwrap().is_match(payload));
     }
 
     #[test]
     fn html_markup_removed_from_etym() {
-        let raw_html = include_str!("../tests/fixture-viking.html");
+        let payload = include_str!("../tests/fixture-viking.rsc");
 
-        // Test extraction of etymology HTML
-        let etym_html = Etymology::extract_etymology_html(&raw_html).unwrap();
+        // Test extraction of etymology HTML (referenced via $id chunk)
+        let etym_html = Etymology::extract_etymology_html(&payload).unwrap();
         assert!(etym_html.contains("Scandinavian pirate"));
         assert!(etym_html.contains("vikingr"));
 
         // Test extraction and beautification
-        let label = Etymology::extract_word_name(&raw_html).unwrap();
+        let label = Etymology::extract_word_name(&payload).unwrap();
         assert_eq!(label, "Viking (n.)");
 
         let etymology = Etymology::beautify(&etym_html).unwrap();
@@ -200,21 +195,21 @@ mod tests {
 
     #[test]
     fn scrimshaw_inline_etymology() {
-        let raw_html = include_str!("../tests/fixture-scrimshaw.html");
+        let payload = include_str!("../tests/fixture-scrimshaw.rsc");
 
         // Test extraction of etymology HTML (inline, not $ref)
-        let etym_html = Etymology::extract_etymology_html(&raw_html).unwrap();
+        let etym_html = Etymology::extract_etymology_html(&payload).unwrap();
         assert!(etym_html.contains("shell or piece of ivory"));
         assert!(etym_html.contains("scrimshon"));
 
         // Test extraction and beautification
-        let label = Etymology::extract_word_name(&raw_html).unwrap();
+        let label = Etymology::extract_word_name(&payload).unwrap();
         assert_eq!(label, "scrimshaw (n.)");
 
         let etymology = Etymology::beautify(&etym_html).unwrap();
         assert!(etymology.contains("shell or piece of ivory"));
         assert!(etymology.contains("scrimshon"));
-        // Should NOT contain cruft from the page
+        // Should NOT contain cruft from the payload
         assert!(!etymology.contains("localStorage"));
         assert!(!etymology.contains("Log in"));
         assert!(!etymology.contains("Remove Ads"));
