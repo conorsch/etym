@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.0.11 (2026-10-08)
+
+* fix: permit nix builds, via fixture path update
+* chore: bump nixpkgs dependencies
+
 ## 0.0.10 (2026-10-08)
 
 * fix: query EtymOnline's RSC endpoint; HTML pages are now Cloudflare-challenged
