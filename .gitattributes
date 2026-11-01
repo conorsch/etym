@@ -1,0 +1,29 @@
+# Set default behavior to automatic text normalization (LF in repo)
+* text=auto eol=lf
+
+# Rust source files
+*.rs text eol=lf
+Cargo.toml text eol=lf
+Cargo.lock text eol=lf
+
+# Python source & packaging files
+*.py text eol=lf
+*.pyi text eol=lf
+pyproject.toml text eol=lf
+README.md text eol=lf
+
+# PEP 561 type marker (empty file, retain LF)
+py.typed text eol=lf
+
+# Fixtures & mock streams (e.g. Next.js React Server Component flight streams)
+*.rsc text eol=lf
+*.json text eol=lf
+
+# Binary & compiled output files
+*.so binary
+*.pyd binary
+*.dylib binary
+*.dll binary
+*.rlib binary
+*.tar.gz binary
+*.whl binary
