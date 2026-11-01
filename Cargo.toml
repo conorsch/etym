@@ -47,3 +47,16 @@ push = false
 dependent-version = "upgrade"
 # Permit publishing from any branch, because I often prepare releases on feature branches.
 allow-branch = ["*"]
+
+# Configuration for 'cargo-binstall'
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-v{ version }-{ target }.{ archive-format }"
+bin-dir = "{ name }-{ target }/{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
+
+# Windows targets use .zip format
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-fmt = "zip"
+
+[package.metadata.binstall.overrides.aarch64-pc-windows-msvc]
+pkg-fmt = "zip"

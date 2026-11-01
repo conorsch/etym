@@ -1,0 +1,38 @@
+name: "CI"
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - macos-13 # x86_64 runner
+          - macos-15 # aarch64 runner
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Magic Nix Cache
+        uses: DeterminateSystems/magic-nix-cache-action@v9
+
+      - name: Build Root Rust CLI via Nix
+        uses: samueldr/nix-build-action@v7
+        with:
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Build PyO3 Python Flake (src/python)
+        uses: samueldr/nix-build-action@v7
+        with:
+          file: ./src/python/flake.nix
+          extra-conf: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
