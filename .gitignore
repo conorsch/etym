@@ -1,10 +1,47 @@
-*.tar.gz
-*.whl
-*egg-info/
-*.deb
-
-# nix
-/result
-
-# Added by cargo
+# Core Rust & Cargo artifacts
 /target
+Cargo.lock
+
+# Python build, distribution & packaging outputs
+build/
+dist/
+*.egg-info/
+.eggs/
+*.whl
+*.tar.gz
+*.deb
+*.rpm
+
+# Compiled PyO3 binary modules & Python bytecode
+*.so
+*.pyd
+*.dylib
+*.dll
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python virtual environments & tool caches
+.venv/
+venv/
+ENV/
+env/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.hatch/
+
+# Maturin & PyO3 build caches
+.maturin/
+
+# Nix environment outputs
+/result
+/result-*
+
+# IDE & OS specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

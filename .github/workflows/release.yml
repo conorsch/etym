@@ -1,0 +1,541 @@
+name: Release Python Wheels, Multi-Platform Binaries, DEB/RPM, Homebrew, AUR, NuGet & Chocolatey
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # Mandatory to attach assets to GitHub Releases
+  id-token: write # Mandatory for PyPI OIDC trusted publishing
+
+jobs:
+  # ===========================================================================
+  # 1. Native CLI Binaries Matrix (cargo-binstall Compatible)
+  # ===========================================================================
+  build-binaries:
+    name: Binary (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # --- Linux Targets ---
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            use-cross: true
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-latest
+            use-cross: true
+          - target: i686-unknown-linux-musl
+            os: ubuntu-latest
+            use-cross: true
+          - target: riscv64gc-unknown-linux-gnu
+            os: ubuntu-latest
+            use-cross: true
+
+          # --- macOS Targets ---
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            use-cross: false
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            use-cross: false
+
+          # --- Windows Targets ---
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            use-cross: false
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            use-cross: false
+          - target: i686-pc-windows-msvc
+            os: windows-latest
+            use-cross: false
+
+          # --- BSD Targets ---
+          - target: x86_64-unknown-freebsd
+            os: ubuntu-latest
+            use-cross: true
+          - target: aarch64-unknown-freebsd
+            os: ubuntu-latest
+            use-cross: true
+          - target: x86_64-unknown-netbsd
+            os: ubuntu-latest
+            use-cross: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross runner
+        if: ${{ matrix.use-cross }}
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build Binary Target
+        shell: bash
+        run: |
+          if [ "${{ matrix.use-cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+
+      - name: Package Binary Archive & Compute SHA-256
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          STAGE_DIR="etym-${VERSION}-${{ matrix.target }}"
+          mkdir -p "$STAGE_DIR"
+          mkdir -p dist
+
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp "target/${{ matrix.target }}/release/etym.exe" "$STAGE_DIR/"
+            7z a "dist/${STAGE_DIR}.zip" "$STAGE_DIR"
+            cd dist && certutil -hashfile "${STAGE_DIR}.zip" SHA256 > "${STAGE_DIR}.zip.sha256"
+          else
+            cp "target/${{ matrix.target }}/release/etym" "$STAGE_DIR/"
+            tar -czvf "dist/${STAGE_DIR}.tar.gz" "$STAGE_DIR"
+            cd dist && sha256sum "${STAGE_DIR}.tar.gz" > "${STAGE_DIR}.tar.gz.sha256"
+          fi
+
+      - name: Upload Binary Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.target }}
+          path: dist/*
+
+  # ===========================================================================
+  # 2. Debian (.deb) Installer Packages
+  # ===========================================================================
+  build-deb:
+    name: Debian Package (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+          - target: aarch64-unknown-linux-musl
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cargo-deb and cross
+        run: |
+          cargo install cargo-deb
+          cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build .deb Package
+        run: |
+          cross build --release --target ${{ matrix.target }}
+          cargo deb --no-build --target ${{ matrix.target }}
+
+      - name: Prepare .deb Artifacts & SHA-256
+        shell: bash
+        run: |
+          mkdir -p deb-dist
+          cp target/${{ matrix.target }}/debian/*.deb deb-dist/
+          cd deb-dist
+          for file in *.deb; do
+            sha256sum "$file" > "${file}.sha256"
+          done
+
+      - name: Upload .deb Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-${{ matrix.target }}
+          path: deb-dist/*
+
+  # ===========================================================================
+  # 3. RPM (.rpm) Packages (RedHat / Fedora / CentOS / Rocky)
+  # ===========================================================================
+  build-rpm:
+    name: RPM Package (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            arch: x86_64
+          - target: aarch64-unknown-linux-musl
+            arch: aarch64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cargo-generate-rpm and cross
+        run: |
+          cargo install cargo-generate-rpm
+          cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build Binary with Cross
+        run: cross build --release --target ${{ matrix.target }}
+
+      - name: Generate .rpm Package & SHA-256
+        shell: bash
+        run: |
+          mkdir -p rpm-dist
+          VERSION=${GITHUB_REF#refs/tags/}
+          CLEAN_VER=${VERSION#v}
+          RPM_NAME="etym-${CLEAN_VER}-1.${{ matrix.arch }}.rpm"
+
+          cargo generate-rpm \
+            --target ${{ matrix.target }} \
+            --output "rpm-dist/${RPM_NAME}"
+
+          cd rpm-dist
+          sha256sum "${RPM_NAME}" > "${RPM_NAME}.sha256"
+
+      - name: Upload .rpm Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-${{ matrix.target }}
+          path: rpm-dist/*
+
+  # ===========================================================================
+  # 4. PyO3 Python Wheels & sdist (Maturin)
+  # ===========================================================================
+  build-wheels-linux:
+    name: Python Wheel (Linux ${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64, aarch64, i686]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist --manifest-path src/python/Cargo.toml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-linux-${{ matrix.target }}
+          path: dist/*.whl
+
+  build-wheels-macos:
+    name: Python Wheel (macOS Universal2)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: universal2-apple-darwin
+          args: --release --out dist --manifest-path src/python/Cargo.toml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos
+          path: dist/*.whl
+
+  build-wheels-windows:
+    name: Python Wheel (Windows ${{ matrix.target }})
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target: [x64, x86]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist --manifest-path src/python/Cargo.toml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-windows-${{ matrix.target }}
+          path: dist/*.whl
+
+  build-sdist:
+    name: Python sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist --manifest-path src/python/Cargo.toml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-sdist
+          path: dist/*.tar.gz
+
+  # ===========================================================================
+  # 5. Publish Everything to GitHub Releases
+  # ===========================================================================
+  github-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-binaries, build-deb, build-rpm, build-wheels-linux, build-wheels-macos, build-wheels-windows, build-sdist]
+    steps:
+      - name: Download all binary archives, package installers, and wheels
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release & Attach Assets
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            release-artifacts/*.tar.gz
+            release-artifacts/*.zip
+            release-artifacts/*.deb
+            release-artifacts/*.rpm
+            release-artifacts/*.whl
+            release-artifacts/*.sha256
+          generate_release_notes: true
+
+  # ===========================================================================
+  # 6. Update Custom Homebrew Tap Formula
+  # ===========================================================================
+  update-homebrew-tap:
+    name: Update Homebrew Formula
+    runs-on: ubuntu-latest
+    needs: [github-release]
+    steps:
+      - name: Download macOS x86_64 binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: binary-x86_64-apple-darwin
+          path: dist
+
+      - name: Extract macOS SHA-256 Checksum
+        id: sha
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          TARBALL="etym-${VERSION}-x86_64-apple-darwin.tar.gz"
+          SHA_VALUE=$(cat "dist/${TARBALL}.sha256" | awk '{print $1}')
+          echo "checksum=${SHA_VALUE}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
+
+      - name: Checkout Homebrew Tap Repository
+        uses: actions/checkout@v4
+        with:
+          repository: 'necrose99/homebrew-tap'
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Generate & Commit Updated Homebrew Formula
+        shell: bash
+        run: |
+          VERSION="${{ steps.sha.outputs.version }}"
+          SHA="${{ steps.sha.outputs.checksum }}"
+
+          cat << EOF > homebrew-tap/Formula/etym.rb
+          class Etym < Formula
+            desc "EtymOnline lookup CLI written in Rust"
+            homepage "https://github.com/conorsch/etym"
+            url "https://github.com/conorsch/etym/releases/download/v${VERSION}/etym-v${VERSION}-x86_64-apple-darwin.tar.gz"
+            sha256 "${SHA}"
+            license "MIT"
+
+            def install
+              bin.install "etym"
+            end
+
+            test do
+              system "#{bin}/etym", "--help"
+            end
+          end
+          EOF
+
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/etym.rb
+          git commit -m "feat(formula): update etym to v${VERSION}" || exit 0
+          git push
+
+  # ===========================================================================
+  # 7. Update Arch Linux AUR Package (etym-bin)
+  # ===========================================================================
+  update-aur:
+    name: Publish to Arch Linux AUR
+    runs-on: ubuntu-latest
+    needs: [github-release]
+    steps:
+      - name: Download Linux x86_64 binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: binary-x86_64-unknown-linux-musl
+          path: dist
+
+      - name: Extract Linux SHA-256 Checksum
+        id: sha
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          TARBALL="etym-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          SHA_VALUE=$(cat "dist/${TARBALL}.sha256" | awk '{print $1}')
+          echo "checksum=${SHA_VALUE}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
+
+      - name: Publish to AUR via KSLE-AUR Action
+        uses: KSLE/aur-releaser@v2
+        with:
+          aur_name: etym-bin
+          aur_email: ${{ secrets.AUR_EMAIL }}
+          aur_pkey: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          pkgver: ${{ steps.sha.outputs.version }}
+          sha256sums: ${{ steps.sha.outputs.checksum }}
+
+  # ===========================================================================
+  # 8. Publish to NuGet (etym.Native Package)
+  # ===========================================================================
+  publish-nuget:
+    name: Publish to NuGet.org
+    runs-on: windows-latest
+    needs: [github-release]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Download Windows x64 Binary
+        uses: actions/download-artifact@v4
+        with:
+          name: binary-x86_64-pc-windows-msvc
+          path: win-dist
+
+      - name: Pack & Push NuGet Package
+        shell: powershell
+        run: |
+          $VERSION = ("${{ github.ref_name }}").TrimStart("v")
+          
+          # Create nuspec manifest dynamically
+          $nuspec = @"
+          <?xml version="1.0" encoding="utf-8"?>
+          <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
+            <metadata>
+              <id>etym.Native</id>
+              <version>$VERSION</version>
+              <authors>Conor Schaefer, necrose99</authors>
+              <description>Native Windows CLI binary distribution for etym (EtymOnline lookup engine).</description>
+              <license type="expression">MIT</license>
+              <projectUrl>https://github.com/conorsch/etym</projectUrl>
+              <repository type="git" url="https://github.com/conorsch/etym" />
+            </metadata>
+            <files>
+              <file src="win-dist\etym-v$VERSION-x86_64-pc-windows-msvc\etym.exe" target="tools\etym.exe" />
+            </files>
+          </package>
+          "@
+          $nuspec | Out-File -Encoding utf8 etym.Native.nuspec
+
+          nuget pack etym.Native.nuspec
+          dotnet nuget push "*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+
+  # ===========================================================================
+  # 9. Publish to Chocolatey Community Repository
+  # ===========================================================================
+  publish-chocolatey:
+    name: Publish to Chocolatey.org
+    runs-on: windows-latest
+    needs: [github-release]
+    steps:
+      - name: Download Windows zip artifact SHA
+        uses: actions/download-artifact@v4
+        with:
+          name: binary-x86_64-pc-windows-msvc
+          path: choco-dist
+
+      - name: Pack & Push Chocolatey Package
+        shell: powershell
+        run: |
+          $VERSION = ("${{ github.ref_name }}").TrimStart("v")
+          $SHA = (Get-Content "choco-dist\etym-v$VERSION-x86_64-pc-windows-msvc.zip.sha256").Split()[0]
+
+          New-Item -ItemType Directory -Path choco-pkg\tools -Force
+
+          # chocolateyInstall.ps1 script
+          $chocoInstall = @"
+          `$ErrorActionPreference = 'Stop';
+          `$toolsDir   = '$(Get-ToolsLocation)\etym'
+          `$packageArgs = @{
+            packageName   = 'etym'
+            unzipLocation = `$toolsDir
+            fileType      = 'zip'
+            url           = 'https://github.com/conorsch/etym/releases/download/v$VERSION/etym-v$VERSION-x86_64-pc-windows-msvc.zip'
+            checksum      = '$SHA'
+            checksumType  = 'sha256'
+          }
+          Install-ChocolateyZipPackage `@packageArgs
+          "@
+          $chocoInstall | Out-File -Encoding utf8 choco-pkg\tools\chocolateyInstall.ps1
+
+          # nuspec manifest
+          $nuspec = @"
+          <?xml version="1.0" encoding="utf-8"?>
+          <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+            <metadata>
+              <id>etym</id>
+              <version>$VERSION</version>
+              <title>etym CLI</title>
+              <authors>Conor Schaefer, necrose99</authors>
+              <projectUrl>https://github.com/conorsch/etym</projectUrl>
+              <licenseUrl>https://github.com/conorsch/etym/blob/main/LICENSE</licenseUrl>
+              <requireLicenseAcceptance>false</requireLicenseAcceptance>
+              <description>EtymOnline lookup engine written in Rust.</description>
+              <summary>CLI tool for looking up etymologies from EtymOnline.com</summary>
+              <tags>etym etymology linguistics rust cli</tags>
+            </metadata>
+            <files>
+              <file src="tools\**" target="tools" />
+            </files>
+          </package>
+          "@
+          $nuspec | Out-File -Encoding utf8 choco-pkg\etym.nuspec
+
+          cd choco-pkg
+          choco pack
+          choco apiKey set -source https://push.chocolatey.org/ -key ${{ secrets.CHOCOLATEY_API_KEY }}
+          choco push (Get-ChildItem *.nupkg).Name -source https://push.chocolatey.org/
+
+  # ===========================================================================
+  # 10. Publish Python Packages to PyPI
+  # ===========================================================================
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: [build-wheels-linux, build-wheels-macos, build-wheels-windows, build-sdist]
+    steps:
+      - name: Download Python wheels & sdist only
+        uses: actions/download-artifact@v4
+        with:
+          path: pypi-dist
+          pattern: wheels-*
+          merge-multiple: true
+
+      - name: Publish Python package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: pypi-dist
